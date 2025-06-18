@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Masters: Free Body Diagram Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="header">
+            <h1>Force Masters</h1>
+            <div id="level-info">Level: <span id="current-level">1</span></div>
+            <div id="score-info">Score: <span id="current-score">0</span></div>
+        </div>
+        
+        <div id="game-area">
+            <div id="physics-world"></div>
+            <div id="fbd-display"></div>
+        </div>
+        
+        <div id="control-panel">
+            <div id="force-tools">
+                <div class="force-tool" data-force="gravity">
+                    <div class="force-icon gravity-icon"></div>
+                    <div class="force-label">Gravity</div>
+                    <div class="force-note">(Always 180°)</div>
+                </div>
+                <div class="force-tool" data-force="normal">
+                    <div class="force-icon normal-icon"></div>
+                    <div class="force-label">Normal Force</div>
+                </div>
+                <div class="force-tool" data-force="friction">
+                    <div class="force-icon friction-icon"></div>
+                    <div class="force-label">Friction</div>
+                </div>
+                <div class="force-tool" data-force="applied">
+                    <div class="force-icon applied-icon"></div>
+                    <div class="force-label">Applied Force</div>
+                </div>
+            </div>
+            
+            <div id="angle-controls">
+                <div class="angle-control-group">
+                    <label>Normal Force Angle:</label>
+                    <div class="angle-buttons">
+                        <button class="angle-btn" data-force="normal" data-angle="0">0°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="30">30°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="45">45°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="60">60°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="90">90°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="120">120°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="135">135°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="150">150°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="210">210°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="240">240°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="255">255°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="270">270°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="300">300°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="315">315°</button>
+                        <button class="angle-btn" data-force="normal" data-angle="330">330°</button>
+                    </div>
+                </div>
+                <div class="angle-control-group">
+                    <label>Friction Angle:</label>
+                    <div class="angle-buttons">
+                        <button class="angle-btn" data-force="friction" data-angle="0">0°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="30">30°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="45">45°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="60">60°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="90">90°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="120">120°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="135">135°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="150">150°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="210">210°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="240">240°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="255">255°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="270">270°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="300">300°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="315">315°</button>
+                        <button class="angle-btn" data-force="friction" data-angle="330">330°</button>
+                    </div>
+                </div>
+                <div class="angle-control-group">
+                    <label>Applied Force Angle:</label>
+                    <div class="angle-buttons">
+                        <button class="angle-btn" data-force="applied" data-angle="0">0°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="30">30°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="45">45°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="60">60°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="90">90°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="120">120°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="135">135°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="150">150°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="210">210°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="240">240°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="255">255°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="270">270°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="300">300°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="315">315°</button>
+                        <button class="angle-btn" data-force="applied" data-angle="330">330°</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="object-tools">
+                <button id="reset-btn">Reset Scene</button>
+                <button id="hint-btn">Show Hint</button>
+                <button id="help-btn">Help</button>
+            </div>
+        </div>
+        
+        <div id="challenge-panel">
+            <h3>Challenge:</h3>
+            <p id="challenge-text">Create a free body diagram for a box resting on a flat surface.</p>
+            <div id="force-status">
+                <h4>Force Status:</h4>
+                <div id="force-status-list"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="level-complete" class="modal">
+        <div class="modal-content">
+            <h2>Level Complete!</h2>
+            <p>You've earned <span id="level-points">0</span> points.</p>
+            <button id="next-level-btn">Next Level</button>
+        </div>
+    </div>
+    
+    <div id="help-modal" class="modal">
+        <div class="modal-content">
+            <h2>How to Play</h2>
+            <p>1. Click on force buttons to add forces to the object.</p>
+            <p>2. For each force, select the <strong>correct angle</strong> as specified in the challenge.</p>
+            <p>3. The free body diagram will update in real-time.</p>
+            <p>4. You must add <strong>all required forces with their correct angles</strong> to complete the level.</p>
+            <p><strong>Angle Guide (True Bearing):</strong></p>
+            <ul>
+                <li>0° = North (up) ↑</li>
+                <li>90° = East (right) →</li>
+                <li>180° = South (down) ↓</li>
+                <li>270° = West (left) ←</li>
+                <li>30°, 45°, 60° = Angles between North and East</li>
+                <li>120°, 135°, 150° = Angles between East and South</li>
+                <li>210°, 225°, 240° = Angles between South and West</li>
+                <li>300°, 315°, 330° = Angles between West and North</li>
+            </ul>
+            <p><strong>Important:</strong> Gravity always points downward (180°) and cannot be changed.</p>
+            <p><strong>Tip:</strong> For inclined planes, normal forces are perpendicular to the surface, while friction acts parallel to the surface.</p>
+            <button id="close-help-btn">Close</button>
+        </div>
+    </div>
+    
+    <div id="hint-modal" class="modal">
+        <div class="modal-content">
+            <h2>Hint</h2>
+            <p id="hint-text">Remember that forces have specific directions based on the scenario.</p>
+            <button id="close-hint-btn">Close</button>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.18.0/matter.min.js"></script>
+    <script src="game-angle-functions.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

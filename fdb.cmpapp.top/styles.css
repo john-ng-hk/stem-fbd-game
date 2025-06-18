@@ -1,0 +1,464 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+}
+
+body {
+    background-color: #f0f8ff;
+    color: #333;
+}
+
+#game-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+#header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #4a90e2;
+    color: white;
+    border-radius: 8px;
+}
+
+#header h1 {
+    font-size: 24px;
+}
+
+#game-area {
+    display: flex;
+    height: 500px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#physics-world, #fbd-display {
+    flex: 1;
+    height: 100%;
+    background-color: white;
+    border: 1px solid #ddd;
+}
+
+#physics-world {
+    border-right: none;
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+    position: relative;
+}
+
+#fbd-display {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    position: relative;
+}
+
+#control-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #e9ecef;
+    border-radius: 8px;
+}
+
+#force-tools {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+#angle-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+.angle-control-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.angle-control-group label {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.angle-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: center;
+    max-width: 600px;
+}
+
+.angle-btn {
+    padding: 5px;
+    min-width: 40px;
+    background-color: #e0e0e0;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 12px;
+}
+
+.angle-btn:hover {
+    background-color: #d0d0d0;
+}
+
+.angle-btn.active {
+    background-color: #4a90e2;
+    color: white;
+    border-color: #3a7bc8;
+}
+
+.force-tool {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.force-tool:hover {
+    background-color: #d0d0d0;
+}
+
+.force-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-weight: bold;
+}
+
+.gravity-icon {
+    background-color: #3498db;
+}
+
+.normal-icon {
+    background-color: #2ecc71;
+}
+
+.friction-icon {
+    background-color: #e74c3c;
+}
+
+.applied-icon {
+    background-color: #9b59b6;
+}
+
+.force-label {
+    font-size: 12px;
+    text-align: center;
+}
+
+.force-note {
+    font-size: 10px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+#object-tools {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+button {
+    padding: 8px 15px;
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #3a7bc8;
+}
+
+#challenge-panel {
+    padding: 15px;
+    background-color: #e9ecef;
+    border-radius: 8px;
+}
+
+#force-status {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #ccc;
+}
+
+#force-status h4 {
+    margin-bottom: 10px;
+}
+
+#force-status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.force-status-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-indicator {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+}
+
+.status-correct {
+    background-color: #2ecc71;
+}
+
+.status-incorrect {
+    background-color: #e74c3c;
+}
+
+.status-missing {
+    background-color: #95a5a6;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 500px;
+    text-align: center;
+}
+
+.modal-content h2 {
+    margin-bottom: 15px;
+}
+
+.modal-content p {
+    margin-bottom: 15px;
+}
+
+.force-vector {
+    position: absolute;
+    pointer-events: none;
+}
+
+.force-arrow {
+    position: absolute;
+    height: 4px;
+    transform-origin: left center;
+    background-color: currentColor;
+}
+
+.force-arrow::after {
+    content: '';
+    position: absolute;
+    right: -8px;
+    top: -6px;
+    border-left: 10px solid currentColor;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+}
+
+/* Special styling for gravity arrow to ensure it points downward */
+.force-vector .force-arrow[style*="rotate(270deg)"] {
+    background-color: #3498db !important;
+}
+
+.gravity-line {
+    position: absolute;
+    width: 4px;
+    height: 80px;
+    background-color: #3498db;
+    top: 0;
+    left: -2px; /* Center the line */
+}
+
+.gravity-arrowhead {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 10px solid #3498db;
+    top: 80px;
+    left: -8px;
+}
+
+.gravity-line.correct-angle {
+    box-shadow: 0 0 5px 1px rgba(46, 204, 113, 0.7);
+}
+
+.force-arrow.incorrect-angle {
+    background-image: linear-gradient(to right, currentColor 50%, transparent 50%);
+    background-size: 10px 4px;
+    background-repeat: repeat-x;
+    opacity: 0.7;
+}
+
+.force-arrow.correct-angle {
+    box-shadow: 0 0 5px 1px rgba(46, 204, 113, 0.7);
+}
+
+.force-arrow.incorrect-angle::after {
+    opacity: 0.7;
+}
+
+.force-label-text {
+    position: absolute;
+    font-size: 14px;
+    font-weight: bold;
+    color: currentColor;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+.object {
+    position: absolute;
+    background-color: #f39c12;
+    border: 2px solid #e67e22;
+}
+
+.surface {
+    position: absolute;
+    background-color: #95a5a6;
+}
+.angle-indicators {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.angle-marker {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.angle-label {
+    position: absolute;
+    font-size: 10px;
+    color: rgba(0, 0, 0, 0.7);
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+}
+
+.reference-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.reference-line {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.reference-line.horizontal {
+    width: 100%;
+    height: 1px;
+    top: 50%;
+    left: 0;
+}
+
+.reference-line.vertical {
+    width: 1px;
+    height: 100%;
+    top: 0;
+    left: 50%;
+}
+/* Incline angle indicator styles */
+.incline-angle-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.incline-angle-arc {
+    position: absolute;
+    border: 2px solid rgba(0, 0, 0, 0.5);
+    border-right: none;
+    border-bottom: none;
+    border-radius: 100% 0 0 0;
+    clip-path: polygon(0% 0%, 100% 0%, 0% 100%);
+    z-index: 4;
+    transform: rotate(180deg);
+}
+
+.incline-angle-label {
+    position: absolute;
+    font-size: 14px;
+    font-weight: bold;
+    color: rgba(0, 0, 0, 0.7);
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 2px 5px;
+    border-radius: 3px;
+    z-index: 6;
+}
+
+.incline-reference-line {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.3);
+    height: 2px;
+    transform-origin: left center;
+    z-index: 5;
+}
+
+.incline-reference-line.inclined {
+    background-color: rgba(255, 0, 0, 0.5);
+    height: 2px;
+    z-index: 5;
+}

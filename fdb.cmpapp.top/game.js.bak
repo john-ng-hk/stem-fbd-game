@@ -1,0 +1,1027 @@
+// Force Masters: Free Body Diagram Game
+// Main game logic
+
+// Game state
+const gameState = {
+    level: 1,
+    score: 0,
+    currentObject: null,
+    appliedForces: [],
+    isLevelComplete: false,
+    inclinedAngle: Math.PI / 8 // Default inclined angle (approx 22.5 degrees)
+};
+
+// Level definitions
+const levels = [
+    {
+        id: 1,
+        title: "Box on a Surface",
+        description: "Create a free body diagram for a box resting on a flat surface.",
+        objectType: "box",
+        requiredForces: [
+            { type: "gravity", angle: 180 },  // Down (South)
+            { type: "normal", angle: 0 }      // Up (North)
+        ],
+        hint: "Remember that a stationary object has balanced forces acting on it. Normal force points directly opposite to gravity."
+    },
+    {
+        id: 2,
+        title: "Box on a Surface with Friction",
+        description: "Create a free body diagram for a box being pushed across a surface with friction.",
+        objectType: "box",
+        requiredForces: [
+            { type: "gravity", angle: 180 },  // Down (South)
+            { type: "normal", angle: 0 },     // Up (North)
+            { type: "friction", angle: 270 }, // Left (West)
+            { type: "applied", angle: 90 }    // Right (East)
+        ],
+        hint: "Friction opposes the direction of motion. Applied force is to the right (90°), so friction is to the left (270°)."
+    },
+    {
+        id: 3,
+        title: "Object on an Inclined Plane",
+        description: "Create a free body diagram for a box on an inclined plane (30° incline).",
+        objectType: "inclinedBox",
+        inclineAngle: 30,
+        requiredForces: [
+            { type: "gravity", angle: 180 },    // Down (South)
+            { type: "normal", angle: 30 },      // Perpendicular to incline (30° from North)
+            { type: "friction", angle: 300 }    // Parallel to incline, opposing motion (300° from North)
+        ],
+        hint: "On an inclined plane, the normal force is perpendicular to the surface (30°), and friction acts parallel to the surface opposing potential motion (300°)."
+    },
+    {
+        id: 4,
+        title: "Object on a Steeper Inclined Plane",
+        description: "Create a free body diagram for a box on a steeper inclined plane (45° incline).",
+        objectType: "inclinedBox",
+        inclineAngle: 45,
+        requiredForces: [
+            { type: "gravity", angle: 180 },    // Down (South)
+            { type: "normal", angle: 45 },      // Perpendicular to incline (45° from North)
+            { type: "friction", angle: 315 }    // Parallel to incline, opposing motion (315° from North)
+        ],
+        hint: "As the incline gets steeper, the normal force angle changes to remain perpendicular to the surface (45°)."
+    }
+];
+
+// DOM Elements
+const physicsWorld = document.getElementById('physics-world');
+const fbdDisplay = document.getElementById('fbd-display');
+const challengeText = document.getElementById('challenge-text');
+const currentLevelDisplay = document.getElementById('current-level');
+const currentScoreDisplay = document.getElementById('current-score');
+const levelCompleteModal = document.getElementById('level-complete');
+const levelPointsDisplay = document.getElementById('level-points');
+const nextLevelBtn = document.getElementById('next-level-btn');
+const helpModal = document.getElementById('help-modal');
+const helpBtn = document.getElementById('help-btn');
+const closeHelpBtn = document.getElementById('close-help-btn');
+const resetBtn = document.getElementById('reset-btn');
+const forceTools = document.querySelectorAll('.force-tool');
+
+// Matter.js setup
+const Engine = Matter.Engine;
+const Render = Matter.Render;
+const World = Matter.World;
+const Bodies = Matter.Bodies;
+const Body = Matter.Body;
+
+// Create engine
+const engine = Engine.create({
+    gravity: {
+        x: 0,
+        y: 1,
+        scale: 0.001
+    }
+});
+
+// Create renderer
+const render = Render.create({
+    element: physicsWorld,
+    engine: engine,
+    options: {
+        width: physicsWorld.clientWidth,
+        height: physicsWorld.clientHeight,
+        wireframes: false,
+        background: '#f0f0f0'
+    }
+});
+
+// Add custom rendering for angle indicator
+render.options.wireframes = false;
+
+// Add afterRender callback to draw angle indicator
+Events = Matter.Events;
+Events.on(render, 'afterRender', function() {
+    const ctx = render.context;
+    
+    // Only draw angle indicator for inclined plane levels
+    if (gameState.inclineAngleDegrees) {
+        // Calculate the bottom-left corner of the inclined plane
+        // This is where the inclined plane meets the horizontal plane
+        const inclineX = gameState.inclinePosition.x;
+        const inclineY = gameState.inclinePosition.y;
+        const inclineLength = 300;
+        const inclineHeight = 20;
+        const inclineAngleRadians = gameState.inclinedAngle;
+        
+        // Calculate corners
+        const halfLength = inclineLength / 2;
+        const halfHeight = inclineHeight / 2;
+        
+        // Calculate the horizontal plane position
+        const groundY = physicsWorld.clientHeight - 50;
+        const groundWidth = physicsWorld.clientWidth;
+        const groundHeight = 20; // Same as inclineHeight for consistency
+        const groundTopY = groundY - groundHeight/2;
+        
+        // Calculate bottom-left and bottom-right corners of the inclined plane
+        const bottomLeftX = inclineX - halfLength * Math.cos(inclineAngleRadians) - halfHeight * Math.sin(inclineAngleRadians);
+        const bottomLeftY = inclineY - halfLength * Math.sin(inclineAngleRadians) + halfHeight * Math.cos(inclineAngleRadians);
+        
+        const bottomRightX = inclineX + halfLength * Math.cos(inclineAngleRadians) - halfHeight * Math.sin(inclineAngleRadians);
+        const bottomRightY = inclineY + halfLength * Math.sin(inclineAngleRadians) + halfHeight * Math.cos(inclineAngleRadians);
+        
+        // Calculate the intersection point where the bottom edge of the inclined plane
+        // meets the top edge of the horizontal plane (y = groundTopY)
+        
+        // If the bottom edge is horizontal, the intersection is directly below
+        let intersectionX = bottomLeftX;
+        let intersectionY = groundTopY;
+        
+        // If the bottom edge is not horizontal, calculate the intersection
+        if (Math.abs(bottomLeftY - bottomRightY) > 0.001) {
+            // Calculate the slope of the bottom edge
+            const slope = (bottomRightY - bottomLeftY) / (bottomRightX - bottomLeftX);
+            
+            // Calculate the y-intercept of the bottom edge
+            const yIntercept = bottomLeftY - slope * bottomLeftX;
+            
+            // Calculate the x-coordinate where y = groundTopY
+            intersectionX = (groundTopY - yIntercept) / slope;
+            intersectionY = groundTopY;
+            
+            // Check if the intersection point is within the bounds of the bottom edge
+            if (intersectionX < Math.min(bottomLeftX, bottomRightX) || intersectionX > Math.max(bottomLeftX, bottomRightX)) {
+                // If not, use the bottom-left corner as a fallback
+                intersectionX = bottomLeftX;
+                intersectionY = bottomLeftY;
+            }
+        }
+        
+        // Calculate the midpoint of the inclined plane
+        const inclineMidX = (inclineX - halfLength * Math.cos(inclineAngleRadians) + inclineX + halfLength * Math.cos(inclineAngleRadians)) / 2;
+        const inclineMidY = (inclineY - halfLength * Math.sin(inclineAngleRadians) + inclineY + halfLength * Math.sin(inclineAngleRadians)) / 2;
+        
+        // Use the intersection point for the angle indicator
+        const midpointX = intersectionX;
+        const midpointY = intersectionY;
+        
+        // Draw the angle indicator at the intersection point
+        drawAngleIndicatorInCanvas(ctx, {x: midpointX, y: midpointY}, gameState.inclineAngleDegrees);
+        
+        // Debug visualization - only in development
+        if (gameState.incline && gameState.currentObject) {
+            // Draw the top edge of the inclined plane
+            // Calculate top-left corner
+            const topLeftX = inclineX - halfLength * Math.cos(inclineAngleRadians) + halfHeight * Math.sin(inclineAngleRadians);
+            const topLeftY = inclineY - halfLength * Math.sin(inclineAngleRadians) - halfHeight * Math.cos(inclineAngleRadians);
+            
+            // Calculate top-right corner
+            const topRightX = inclineX + halfLength * Math.cos(inclineAngleRadians) + halfHeight * Math.sin(inclineAngleRadians);
+            const topRightY = inclineY + halfLength * Math.sin(inclineAngleRadians) - halfHeight * Math.cos(inclineAngleRadians);
+            
+            // Calculate bottom-right corner
+            const bottomRightX = inclineX + halfLength * Math.cos(inclineAngleRadians) - halfHeight * Math.sin(inclineAngleRadians);
+            const bottomRightY = inclineY + halfLength * Math.sin(inclineAngleRadians) + halfHeight * Math.cos(inclineAngleRadians);
+            
+            // Draw all edges of the inclined plane
+            // Top edge (red)
+            ctx.beginPath();
+            ctx.moveTo(topLeftX, topLeftY);
+            ctx.lineTo(topRightX, topRightY);
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Left edge
+            ctx.beginPath();
+            ctx.moveTo(topLeftX, topLeftY);
+            ctx.lineTo(bottomLeftX, bottomLeftY);
+            ctx.strokeStyle = 'rgba(128, 0, 128, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Right edge
+            ctx.beginPath();
+            ctx.moveTo(topRightX, topRightY);
+            ctx.lineTo(bottomRightX, bottomRightY);
+            ctx.strokeStyle = 'rgba(128, 0, 128, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Bottom edge
+            ctx.beginPath();
+            ctx.moveTo(bottomLeftX, bottomLeftY);
+            ctx.lineTo(bottomRightX, bottomRightY);
+            ctx.strokeStyle = 'rgba(128, 0, 128, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw point at 1/3 distance on top edge
+            const t = 1/3;
+            const pointX = topLeftX + t * (topRightX - topLeftX);
+            const pointY = topLeftY + t * (topRightY - topLeftY);
+            
+            ctx.beginPath();
+            ctx.arc(pointX, pointY, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+            ctx.fill();
+            
+            // Draw all four corners of the inclined plane for debugging
+            const cornerSize = 4;
+            
+            // Draw corners
+            ctx.fillStyle = 'rgba(255, 0, 255, 0.8)';
+            
+            // Top-left
+            ctx.beginPath();
+            ctx.arc(topLeftX, topLeftY, cornerSize, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Top-right
+            ctx.beginPath();
+            ctx.arc(topRightX, topRightY, cornerSize, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Bottom-left (intersection point)
+            ctx.beginPath();
+            ctx.arc(bottomLeftX, bottomLeftY, cornerSize + 2, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.8)'; // Yellow for intersection
+            ctx.fill();
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // Bottom-right
+            ctx.beginPath();
+            ctx.arc(bottomRightX, bottomRightY, cornerSize, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255, 0, 255, 0.8)';
+            ctx.fill();
+            
+            // Draw horizontal plane (ground) with top and bottom edges
+            const groundHeight = 20; // Same as inclineHeight for consistency
+            const groundTopY = groundY - groundHeight/2;
+            const groundBottomY = groundY + groundHeight/2;
+            
+            // Draw top edge of horizontal plane
+            ctx.beginPath();
+            ctx.moveTo(0, groundTopY);
+            ctx.lineTo(groundWidth, groundTopY);
+            ctx.strokeStyle = 'rgba(0, 0, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw bottom edge of horizontal plane
+            ctx.beginPath();
+            ctx.moveTo(0, groundBottomY);
+            ctx.lineTo(groundWidth, groundBottomY);
+            ctx.strokeStyle = 'rgba(0, 0, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Fill the horizontal plane with semi-transparent blue
+            ctx.fillStyle = 'rgba(0, 0, 255, 0.1)';
+            ctx.fillRect(0, groundTopY, groundWidth, groundHeight);
+            
+            // Draw horizontal line from bottom-left corner (for angle indicator)
+            ctx.beginPath();
+            ctx.moveTo(bottomLeftX, bottomLeftY);
+            ctx.lineTo(bottomLeftX + 80, bottomLeftY);
+            ctx.strokeStyle = 'rgba(0, 0, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw text labels
+            ctx.font = 'bold 12px Arial';
+            ctx.fillStyle = 'black';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Label for intersection point
+            ctx.fillText('Intersection', bottomLeftX, bottomLeftY - 15);
+            
+            // Label for horizontal plane
+            ctx.fillText('Horizontal Plane', groundWidth / 2, groundY);
+            
+            // Label for inclined plane
+            ctx.fillText('Inclined Plane', inclineMidX, inclineMidY);
+        }
+    }
+});
+
+// Function to draw angle indicator directly in the canvas
+function drawAngleIndicatorInCanvas(ctx, position, angleDegrees) {
+    const x = position.x;
+    const y = position.y;
+    const radius = 40;
+    
+    // Save context state
+    ctx.save();
+    
+    // Debug visualization for angle indicator
+    // Draw a point at the center of the angle indicator
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, 2 * Math.PI);
+    ctx.fillStyle = 'rgba(255, 255, 0, 0.8)';
+    ctx.fill();
+    
+    // For the angle indicator only, we'll use true bearing starting from west
+    // Convert the incline angle to be measured from west
+    // If incline is at 30° from north, it's at (360 - 30) = 330° from west
+    const angleFromWest = (360 - angleDegrees) % 360;
+    
+    // Draw inclined reference line (representing bottom edge of inclined plane)
+    // Since we're at the intersection point, this follows the angle of the inclined plane
+    const inclineAngleRad = angleFromWest * Math.PI / 180;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(
+        x - radius * Math.cos(inclineAngleRad),
+        y + radius * Math.sin(inclineAngleRad)
+    );
+    ctx.strokeStyle = 'rgba(128, 0, 128, 0.8)'; // Purple to match bottom edge of inclined plane
+    ctx.lineWidth = 2; // Make it thicker to match the plane edges
+    ctx.stroke();
+    
+    // Draw horizontal reference line (representing top edge of horizontal plane)
+    // Since we're at the intersection point, this is a horizontal line
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - radius, y);
+    ctx.strokeStyle = 'rgba(0, 0, 255, 0.8)'; // Blue for horizontal plane
+    ctx.lineWidth = 2; // Make it thicker to match the plane edges
+    ctx.stroke();
+    
+    // Draw arc for the angle - now starting from inclined line and ending at horizontal line
+    // In canvas, 0 radians is East and goes clockwise
+    // The inclined line is at angle (180 + angleFromWest) degrees
+    // The horizontal line is at 180 degrees (West)
+    const startAngle = (Math.PI + inclineAngleRad) % (2 * Math.PI); // Inclined line angle
+    const endAngle = Math.PI; // Horizontal line (West)
+    
+    ctx.beginPath();
+    ctx.arc(x, y, radius/1.5, startAngle, endAngle, true); // true for counterclockwise
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw angle label - now positioned to the left of the intersection point
+    // Calculate a position to the left of the intersection point
+    const labelOffsetX = -30; // 30 pixels to the left
+    const labelOffsetY = -15; // 15 pixels up
+    const labelX = x + labelOffsetX;
+    const labelY = y + labelOffsetY;
+    
+    // Draw a point at the label position (for debugging)
+    ctx.beginPath();
+    ctx.arc(labelX, labelY, 3, 0, 2 * Math.PI);
+    ctx.fillStyle = 'rgba(0, 255, 255, 0.8)';
+    ctx.fill();
+    
+    ctx.font = 'bold 14px Arial';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Draw background for label
+    const textWidth = ctx.measureText(angleDegrees + '°').width;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.fillRect(labelX - textWidth/2 - 3, labelY - 10, textWidth + 6, 20);
+    
+    // Draw text - still showing the original angle from north for consistency
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillText(angleDegrees + '°', labelX, labelY);
+    
+    // Restore context state
+    ctx.restore();
+}
+    
+    ctx.font = 'bold 14px Arial';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Draw background for label
+    const textWidth = ctx.measureText(angleDegrees + '°').width;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.fillRect(labelX - textWidth/2 - 3, labelY - 10, textWidth + 6, 20);
+    
+    // Draw text - still showing the original angle from north for consistency
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillText(angleDegrees + '°', labelX, labelY);
+    
+    // Restore context state
+    ctx.restore();
+}
+// Initialize game
+function initGame() {
+    updateLevelDisplay();
+    updateScoreDisplay();
+    loadLevel(gameState.level);
+    
+    // Start the engine
+    Engine.run(engine);
+    Render.run(render);
+    
+    // Event listeners
+    setupEventListeners();
+}
+
+// Load a specific level
+function loadLevel(levelId) {
+    // Clear previous level
+    clearLevel();
+    
+    // Get level data
+    const level = levels.find(l => l.id === levelId);
+    if (!level) return;
+    
+    // Update challenge text with angle requirements
+    let challengeText = document.getElementById('challenge-text');
+    challengeText.innerHTML = `${level.description}<br><br>`;
+    challengeText.innerHTML += `<strong>Required forces with correct angles:</strong><br>`;
+    
+    // List required forces and their angles
+    level.requiredForces.forEach(force => {
+        const forceName = getForceName(force.type);
+        challengeText.innerHTML += `• ${forceName}: ${force.angle}° angle<br>`;
+    });
+    
+    // Create objects based on level type
+    createLevelObjects(level);
+    
+    // Reset applied forces
+    gameState.appliedForces = [];
+    
+    // Update FBD display
+    updateFBD();
+    
+    // Reset angle buttons UI
+    updateAllAngleButtonsUI();
+    
+    // Initialize force status display
+    updateForceStatus();
+}
+
+// Get full force name from type
+function getForceName(forceType) {
+    switch(forceType) {
+        case 'gravity':
+            return 'Gravity';
+        case 'normal':
+            return 'Normal Force';
+        case 'friction':
+            return 'Friction';
+        case 'applied':
+            return 'Applied Force';
+        default:
+            return forceType;
+    }
+}
+
+// Create objects for the current level
+function createLevelObjects(level) {
+    // Clear existing objects
+    World.clear(engine.world);
+    
+    // Create ground
+    const ground = Bodies.rectangle(
+        physicsWorld.clientWidth / 2,
+        physicsWorld.clientHeight - 50,
+        physicsWorld.clientWidth,
+        20,
+        { isStatic: true, render: { fillStyle: '#95a5a6' } }
+    );
+    
+    // Store ground in gameState
+    gameState.ground = ground;
+    
+    World.add(engine.world, ground);
+    
+    // Create main object based on level type
+    if (level.objectType === "box") {
+        // For flat surface, position the box directly on top of the ground
+        const boxSize = 50;
+        const groundHeight = 20;
+        
+        gameState.currentObject = Bodies.rectangle(
+            physicsWorld.clientWidth / 2,
+            physicsWorld.clientHeight - 50 - (groundHeight/2) - (boxSize/2), // Position exactly on top of ground
+            boxSize,
+            boxSize,
+            { 
+                isStatic: true,
+                render: { fillStyle: '#f39c12', strokeStyle: '#e67e22', lineWidth: 2 }
+            }
+        );
+    } else if (level.objectType === "inclinedBox") {
+        // Get incline angle (default to 30 degrees if not specified)
+        const inclineAngleDegrees = level.inclineAngle || 30;
+        const inclineAngleRadians = inclineAngleDegrees * Math.PI / 180;
+        
+        // Store the incline angle for reference
+        gameState.inclinedAngle = inclineAngleRadians;
+        
+        // Create inclined plane
+        const inclineLength = 300;
+        const inclineHeight = 20;
+        const inclineX = physicsWorld.clientWidth / 2;
+        const inclineY = physicsWorld.clientHeight - 100;
+        
+        const incline = Bodies.rectangle(
+            inclineX,
+            inclineY,
+            inclineLength,
+            inclineHeight,
+            { 
+                isStatic: true,
+                angle: inclineAngleRadians,
+                render: { fillStyle: '#95a5a6' }
+            }
+        );
+        
+        // Store incline in gameState
+        gameState.incline = incline;
+        
+        World.add(engine.world, incline);
+        
+        // Calculate position for box on incline
+        const boxSize = 50;
+        
+        // SIMPLIFIED APPROACH:
+        // 1. Find the top-left corner of the inclined plane
+        const halfLength = inclineLength / 2;
+        const halfHeight = inclineHeight / 2;
+        
+        // Calculate top-left corner (this is the highest point of the incline)
+        const topLeftX = inclineX - halfLength * Math.cos(inclineAngleRadians) + halfHeight * Math.sin(inclineAngleRadians);
+        const topLeftY = inclineY - halfLength * Math.sin(inclineAngleRadians) - halfHeight * Math.cos(inclineAngleRadians);
+        
+        // Calculate top-right corner
+        const topRightX = inclineX + halfLength * Math.cos(inclineAngleRadians) + halfHeight * Math.sin(inclineAngleRadians);
+        const topRightY = inclineY + halfLength * Math.sin(inclineAngleRadians) - halfHeight * Math.cos(inclineAngleRadians);
+        
+        // 2. Calculate a point 1/3 of the way down the incline from the top-left
+        const t = 1/3; // 1/3 of the way down from top-left
+        const pointX = topLeftX + t * (topRightX - topLeftX);
+        const pointY = topLeftY + t * (topRightY - topLeftY);
+        
+        // 3. Calculate the box position
+        // For a square box rotated to match the incline, we need to position it so that
+        // one of its corners touches the incline surface
+        
+        // The box is rotated by inclineAngleRadians
+        // For a square, the distance from center to corner is (boxSize/2) * sqrt(2)
+        const cornerDistance = (boxSize/2) * Math.sqrt(2);
+        
+        // The angle to the bottom-right corner of the box (when rotated to match incline)
+        // is 45 degrees (π/4) plus the incline angle
+        const cornerAngle = Math.PI/4 + inclineAngleRadians;
+        
+        // Calculate the offset from the point on the incline to the center of the box
+        const offsetX = cornerDistance * Math.cos(cornerAngle);
+        const offsetY = cornerDistance * Math.sin(cornerAngle);
+        
+        // Final box position
+        const boxX = pointX - offsetX;
+        const boxY = pointY - offsetY;
+        
+        // Create box on incline
+        gameState.currentObject = Bodies.rectangle(
+            boxX,
+            boxY,
+            boxSize,
+            boxSize,
+            { 
+                isStatic: true,
+                angle: inclineAngleRadians, // Rotate the box to match the incline
+                render: { 
+                    fillStyle: '#f39c12', 
+                    strokeStyle: '#e67e22', 
+                    lineWidth: 2
+                }
+            }
+        );
+        
+        // Store the positions for reference
+        gameState.inclinePosition = {
+            x: inclineX,
+            y: inclineY
+        };
+        
+        gameState.inclineAngleDegrees = inclineAngleDegrees;
+    }
+    
+    World.add(engine.world, gameState.currentObject);
+}
+
+// Update the FBD display
+function updateFBD() {
+    // Clear previous FBD
+    fbdDisplay.innerHTML = '';
+    
+    // Add angle indicators for FBD (always show full angle indicators)
+    drawAngleIndicators(fbdDisplay);
+    
+    // Create object representation in FBD
+    const fbdObject = document.createElement('div');
+    fbdObject.className = 'object';
+    fbdObject.style.width = '50px';
+    fbdObject.style.height = '50px';
+    fbdObject.style.left = `${fbdDisplay.clientWidth / 2 - 25}px`;
+    fbdObject.style.top = `${fbdDisplay.clientHeight / 2 - 25}px`;
+    
+    // If this is an inclined plane level, rotate the object in the FBD too
+    const currentLevel = levels.find(l => l.id === gameState.level);
+    if (currentLevel && currentLevel.objectType === "inclinedBox") {
+        fbdObject.style.transform = `rotate(${currentLevel.inclineAngle}deg)`;
+    }
+    
+    fbdDisplay.appendChild(fbdObject);
+    
+    // Draw forces
+    gameState.appliedForces.forEach(force => {
+        drawForceVector(force);
+    });
+    
+    // Check if level is complete
+    checkLevelCompletion();
+}
+
+// Draw a force vector on the FBD
+function drawForceVector(force) {
+    const vectorLength = 80; // Base length
+    const centerX = fbdDisplay.clientWidth / 2;
+    const centerY = fbdDisplay.clientHeight / 2;
+    
+    // Create vector container
+    const vectorContainer = document.createElement('div');
+    vectorContainer.className = 'force-vector';
+    vectorContainer.style.left = `${centerX}px`;
+    vectorContainer.style.top = `${centerY}px`;
+    
+    // Special case for gravity - always ensure it points downward (180°)
+    if (force.type === 'gravity') {
+        force.angle = 180; // Force gravity to be 180° (downward)
+        
+        // Create a special downward arrow for gravity
+        const gravityLine = document.createElement('div');
+        gravityLine.className = 'gravity-line';
+        gravityLine.style.backgroundColor = '#3498db';
+        
+        const gravityArrowhead = document.createElement('div');
+        gravityArrowhead.className = 'gravity-arrowhead';
+        
+        // Check if gravity is correct in current level
+        const currentLevel = levels.find(l => l.id === gameState.level);
+        if (currentLevel) {
+            const requiredGravity = currentLevel.requiredForces.find(rf => rf.type === 'gravity');
+            if (requiredGravity) {
+                gravityLine.classList.add('correct-angle');
+            }
+        }
+        
+        // Create label
+        const label = document.createElement('div');
+        label.className = 'force-label-text';
+        label.textContent = 'Fg';
+        label.style.color = '#3498db';
+        label.style.top = '40px';
+        label.style.left = '0px';
+        
+        // Add elements to container
+        vectorContainer.appendChild(gravityLine);
+        vectorContainer.appendChild(gravityArrowhead);
+        vectorContainer.appendChild(label);
+        fbdDisplay.appendChild(vectorContainer);
+        
+        return; // Exit early for gravity
+    }
+    
+    // For all other forces, use the standard arrow
+    const arrow = document.createElement('div');
+    arrow.className = 'force-arrow';
+    
+    // Set color based on force type
+    let color = '#000';
+    
+    switch(force.type) {
+        case 'normal':
+            color = '#2ecc71';
+            break;
+        case 'friction':
+            color = '#e74c3c';
+            break;
+        case 'applied':
+            color = '#9b59b6';
+            break;
+    }
+    
+    // Check if angle is correct for current level
+    const currentLevel = levels.find(l => l.id === gameState.level);
+    if (currentLevel) {
+        const requiredForce = currentLevel.requiredForces.find(rf => rf.type === force.type);
+        if (requiredForce) {
+            // If angle is incorrect, make the arrow dashed
+            if (force.angle !== requiredForce.angle) {
+                arrow.classList.add('incorrect-angle');
+            } else {
+                arrow.classList.add('correct-angle');
+            }
+        }
+    }
+    
+    // Convert from true bearing (0° at North) to CSS rotation (0° at East, clockwise)
+    // We need to subtract 90° from the angle to make 0° point North
+    const cssRotation = (force.angle - 90 + 360) % 360;
+    
+    // Apply styles
+    arrow.style.width = `${vectorLength}px`;
+    arrow.style.transform = `rotate(${cssRotation}deg)`;
+    arrow.style.color = color;
+    
+    // Create label
+    const label = document.createElement('div');
+    label.className = 'force-label-text';
+    label.textContent = getForceLabel(force.type);
+    label.style.color = color;
+    
+    // Position label based on angle
+    const labelDistance = vectorLength * 0.6; // Reduced from previous value
+    
+    // Convert angle to radians for positioning
+    // Since 0° is North, we need to adjust the calculation
+    const angleRad = ((90 - force.angle) % 360) * Math.PI / 180;
+    
+    label.style.left = `${Math.cos(angleRad) * labelDistance}px`;
+    label.style.top = `${-Math.sin(angleRad) * labelDistance}px`;
+    
+    // Add elements to container
+    vectorContainer.appendChild(arrow);
+    vectorContainer.appendChild(label);
+    fbdDisplay.appendChild(vectorContainer);
+}
+
+// Get label text for force type
+function getForceLabel(forceType) {
+    switch(forceType) {
+        case 'gravity':
+            return 'Fg';
+        case 'normal':
+            return 'Fn';
+        case 'friction':
+            return 'Ff';
+        case 'applied':
+            return 'Fa';
+        default:
+            return 'F';
+    }
+}
+
+// Check if the level is complete
+function checkLevelCompletion() {
+    const currentLevel = levels.find(l => l.id === gameState.level);
+    if (!currentLevel) return;
+    
+    // Get applied forces
+    const appliedForces = gameState.appliedForces;
+    
+    // Check if all required forces are applied with correct angles
+    const allRequiredForcesCorrect = currentLevel.requiredForces.every(requiredForce => {
+        // Find matching force by type
+        const appliedForce = appliedForces.find(f => f.type === requiredForce.type);
+        
+        // Check if force exists and has correct angle
+        return appliedForce && appliedForce.angle === requiredForce.angle;
+    });
+    
+    // Check if there are no extra forces
+    const noExtraForces = appliedForces.every(appliedForce => {
+        return currentLevel.requiredForces.some(rf => rf.type === appliedForce.type);
+    });
+    
+    // If all conditions are met and level is not already complete
+    if (allRequiredForcesCorrect && noExtraForces && !gameState.isLevelComplete) {
+        // Level complete!
+        gameState.isLevelComplete = true;
+        const pointsEarned = 100 * gameState.level;
+        gameState.score += pointsEarned;
+        
+        // Update display
+        updateScoreDisplay();
+        
+        // Show completion modal
+        levelPointsDisplay.textContent = pointsEarned;
+        levelCompleteModal.style.display = 'flex';
+    }
+}
+
+// Clear the current level
+function clearLevel() {
+    World.clear(engine.world);
+    fbdDisplay.innerHTML = '';
+    
+    // Reset incline angle state
+    gameState.inclineAngleDegrees = null;
+    gameState.inclinePosition = null;
+    gameState.ground = null;
+    gameState.incline = null;
+    
+    gameState.isLevelComplete = false;
+}
+
+// Add a force to the current object
+function addForce(forceType) {
+    // Check if force already exists
+    const existingForceIndex = gameState.appliedForces.findIndex(f => f.type === forceType);
+    
+    if (existingForceIndex >= 0) {
+        // Remove existing force
+        gameState.appliedForces.splice(existingForceIndex, 1);
+    } else {
+        // Add new force with default angle (using true bearing with 0° at North)
+        let defaultAngle = 0;
+        
+        switch(forceType) {
+            case 'gravity':
+                defaultAngle = 180; // Down (South) - Gravity ALWAYS points down
+                break;
+            case 'normal':
+                defaultAngle = 0;   // Up (North)
+                break;
+            case 'friction':
+                defaultAngle = 270; // Left (West)
+                break;
+            case 'applied':
+                defaultAngle = 90;  // Right (East)
+                break;
+        }
+        
+        gameState.appliedForces.push({
+            type: forceType,
+            magnitude: 1, // Default magnitude
+            angle: defaultAngle // Default angle in degrees (true bearing)
+        });
+    }
+    
+    // For gravity, always ensure it points downward
+    if (forceType === 'gravity') {
+        const gravityIndex = gameState.appliedForces.findIndex(f => f.type === 'gravity');
+        if (gravityIndex >= 0) {
+            gameState.appliedForces[gravityIndex].angle = 180; // Always force gravity to point downward
+        }
+    }
+    
+    // Update FBD
+    updateFBD();
+    
+    // Update force status
+    updateForceStatus();
+}
+
+// Event listeners setup
+function setupEventListeners() {
+    // Force tool buttons
+    forceTools.forEach(tool => {
+        tool.addEventListener('click', () => {
+            const forceType = tool.getAttribute('data-force');
+            addForce(forceType);
+            
+            // Update angle buttons UI
+            updateAllAngleButtonsUI();
+        });
+    });
+    
+    // Angle buttons
+    const angleButtons = document.querySelectorAll('.angle-btn');
+    angleButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const forceType = button.getAttribute('data-force');
+            const angle = button.getAttribute('data-angle');
+            setForceAngle(forceType, angle);
+        });
+    });
+    
+    // Next level button
+    nextLevelBtn.addEventListener('click', () => {
+        if (gameState.level < levels.length) {
+            gameState.level++;
+            loadLevel(gameState.level);
+            levelCompleteModal.style.display = 'none';
+            updateLevelDisplay();
+        } else {
+            // Game complete
+            alert('Congratulations! You have completed all levels!');
+            // Could add a game complete screen here
+        }
+    });
+    
+    // Help button
+    helpBtn.addEventListener('click', () => {
+        helpModal.style.display = 'flex';
+    });
+    
+    // Close help button
+    closeHelpBtn.addEventListener('click', () => {
+        helpModal.style.display = 'none';
+    });
+    
+    // Hint button
+    const hintBtn = document.getElementById('hint-btn');
+    const hintModal = document.getElementById('hint-modal');
+    const closeHintBtn = document.getElementById('close-hint-btn');
+    const hintText = document.getElementById('hint-text');
+    
+    hintBtn.addEventListener('click', () => {
+        // Get current level hint
+        const currentLevel = levels.find(l => l.id === gameState.level);
+        if (currentLevel && currentLevel.hint) {
+            hintText.textContent = currentLevel.hint;
+        } else {
+            hintText.textContent = "Try to think about which forces are acting on the object and in what direction.";
+        }
+        
+        hintModal.style.display = 'flex';
+    });
+    
+    closeHintBtn.addEventListener('click', () => {
+        hintModal.style.display = 'none';
+    });
+    
+    // Reset button
+    resetBtn.addEventListener('click', () => {
+        loadLevel(gameState.level);
+        updateAllAngleButtonsUI();
+        updateForceStatus();
+    });
+    
+    // Window resize
+    window.addEventListener('resize', () => {
+        // Update renderer size
+        render.options.width = physicsWorld.clientWidth;
+        render.options.height = physicsWorld.clientHeight;
+        Render.setPixelRatio(render, window.devicePixelRatio);
+    });
+}
+
+// Update level display
+function updateLevelDisplay() {
+    currentLevelDisplay.textContent = gameState.level;
+}
+
+// Update score display
+function updateScoreDisplay() {
+    currentScoreDisplay.textContent = gameState.score;
+}
+
+// Initialize the game when the page loads
+window.addEventListener('load', initGame);
+            // Draw markers for the corners of the horizontal plane near the intersection
+            const horizontalCornerSize = 4;
+            ctx.fillStyle = 'rgba(0, 0, 255, 0.8)';
+            
+            // Top-left corner of horizontal plane near intersection
+            const hTopLeftX = bottomLeftX;
+            const hTopLeftY = groundTopY;
+            ctx.beginPath();
+            ctx.arc(hTopLeftX, hTopLeftY, horizontalCornerSize, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Bottom-left corner of horizontal plane near intersection
+            const hBottomLeftX = bottomLeftX;
+            const hBottomLeftY = groundBottomY;
+            ctx.beginPath();
+            ctx.arc(hBottomLeftX, hBottomLeftY, horizontalCornerSize, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Draw vertical line connecting the horizontal plane corners at the intersection
+            ctx.beginPath();
+            ctx.moveTo(hTopLeftX, hTopLeftY);
+            ctx.lineTo(hBottomLeftX, hBottomLeftY);
+            ctx.strokeStyle = 'rgba(0, 0, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            // Draw labels for the specific edges used for the angle indicator
+            ctx.font = 'bold 10px Arial';
+            
+            // Label for top edge of horizontal plane
+            ctx.fillStyle = 'rgba(0, 0, 255, 0.9)';
+            ctx.fillText('Horizontal Reference Line', groundWidth / 2, groundTopY - 10);
+            
+            // Label for bottom edge of inclined plane
+            ctx.fillStyle = 'rgba(128, 0, 128, 0.9)';
+            const bottomEdgeMidX = (bottomLeftX + bottomRightX) / 2;
+            const bottomEdgeMidY = (bottomLeftY + bottomRightY) / 2;
+            ctx.fillText('Inclined Reference Line', bottomEdgeMidX, bottomEdgeMidY + 15);

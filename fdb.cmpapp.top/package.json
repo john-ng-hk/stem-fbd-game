@@ -1,0 +1,19 @@
+{
+  "name": "force-masters",
+  "version": "1.0.0",
+  "description": "An educational game for learning free body diagrams",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "education",
+    "physics",
+    "game",
+    "free-body-diagram"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {}
+}
