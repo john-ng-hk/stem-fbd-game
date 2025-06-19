@@ -19,6 +19,13 @@ The application combines real-time physics simulation using Matter.js with an in
 └── prd-fbd-game-template.yaml  # AWS CloudFormation infrastructure template
 ```
 
+## How to Play
+![instructions](./docs/how-to-play.png)
+
+## Game Screenshots
+![Playing instructions](./docs/playing.png)
+![Level complete](./docs/level-complete.png)
+
 ## Usage Instructions
 ### Prerequisites
 - Modern web browser with JavaScript enabled
@@ -136,3 +143,12 @@ AWS resources created by CloudFormation template:
 - HTTPS-only access via CloudFront
 - TLS 1.2 minimum protocol version
 - Origin Access Control for S3 protection
+
+## Lessons Learnt
+I chose this game as one of my STEM teacher friend has discovered her junior students facing difficulties in understanding abstract physic concepts, such as free body diagrams. As such, I created this game to enable students to understand such concepts easier with a gamified learning approach.
+
+Throughout the conversation with Amazon Q, i find the following faciliates effective prompting:
+- Define a prompting framework such that the AI know the context, the task, and the expected results
+- Ask AI to provide visual debugs can let the AI know how to fix issues more quickly
+- Ask AI to give a plan before coding
+  
