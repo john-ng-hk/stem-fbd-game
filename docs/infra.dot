@@ -1,0 +1,15 @@
+digraph INFRA {
+  node [ color = "black", fillcolor = "#E6E6E6", height =1, style = "filled,bold,rounded", fontname = "Arial" ];
+  "FrontendS3Bucket" [ label = "FrontendS3Bucket
+(AWS::S3::Bucket)", shape =cylinder, fillcolor = "#FFF5CD" ];
+  "FrontendS3BucketPolicy" [ label = "FrontendS3BucketPolicy
+(AWS::S3::BucketPolicy)", shape =rectangle ];
+  "FrontendCloudFrontDistribution" [ label = "FrontendCloudFrontDistribution
+(AWS::CloudFront::Distribution)", shape =rectangle, fillcolor = "#E78F81" ];
+  "OriginAccessControl" [ label = "OriginAccessControl
+(AWS::CloudFront::OriginAccessControl)", shape =rectangle ];
+  "FrontendS3BucketPolicy" -> "FrontendS3Bucket";
+  "FrontendS3BucketPolicy" -> "FrontendCloudFrontDistribution";
+  "FrontendCloudFrontDistribution" -> "FrontendS3Bucket";
+  "FrontendCloudFrontDistribution" -> "OriginAccessControl";
+}

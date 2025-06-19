@@ -1,82 +1,138 @@
-# Force Masters: Free Body Diagram Game
+# Force Masters: Interactive Physics Free Body Diagram Learning Game
 
-An interactive educational game designed to help Hong Kong F.2 students learn about free body diagrams through gamified learning.
+Force Masters is an educational web application that helps students learn physics concepts through interactive free body diagram creation. The game provides a hands-on environment where users can apply and visualize different forces (gravity, normal force, friction, and applied force) on objects in various scenarios.
 
-## Overview
+The application combines real-time physics simulation using Matter.js with an intuitive user interface to help students understand force interactions. Users progress through levels of increasing complexity, from basic scenarios like objects on flat surfaces to more challenging situations involving inclined planes and multiple forces.
 
-Force Masters is a web-based physics game that visualizes free body diagrams in real-time. Students can interact with various forces, see how they affect objects, and learn the principles of physics in an engaging way.
+## Repository Structure
+```
+.
+├── deploy.sh                    # AWS deployment script for CloudFormation stack
+├── fdb.cmpapp.top/             # Main application directory
+│   ├── 404.html                # Custom 404 error page
+│   ├── game-angle-functions.js # Force angle calculation and visualization logic
+│   ├── game.js                 # Core game mechanics and physics simulation
+│   ├── index.html             # Main entry point and UI structure
+│   ├── package.json           # Node.js project configuration
+│   ├── server.js              # Development HTTP server
+│   └── styles.css            # Application styling
+└── prd-fbd-game-template.yaml  # AWS CloudFormation infrastructure template
+```
 
-## Features
+## Usage Instructions
+### Prerequisites
+- Modern web browser with JavaScript enabled
+- Node.js (for local development)
+- AWS CLI (for deployment)
 
-- Interactive physics simulation using Matter.js
-- Real-time free body diagram visualization
-- Progressive levels with increasing complexity
-- Immediate feedback on force applications
-- Educational content aligned with Hong Kong F.2 physics curriculum
+For deployment:
+- AWS account with appropriate permissions
+- ACM certificate for the domain
+- Domain name configured in Route 53
 
-## How to Run the Game
+### Installation
 
-1. Clone or download this repository to your local machine
-2. Open the `index.html` file in a modern web browser (Chrome, Firefox, Safari, or Edge)
-3. No additional installation or setup is required!
+#### Local Development
+1. Clone the repository
+```bash
+git clone [repository-url]
+cd [repository-name]
+```
 
-## Game Instructions
+2. Install dependencies
+```bash
+cd fdb.cmpapp.top
+npm install
+```
 
-1. **Objective**: Create correct free body diagrams for each physics scenario
-2. **Controls**:
-   - Click on force buttons in the control panel to add/remove forces
-   - The free body diagram updates in real-time
-   - Complete each level by adding all required forces
-3. **Levels**:
-   - Level 1: Box on a flat surface
-   - Level 2: Box with applied force and friction
-   - Level 3: Object on an inclined plane
+3. Start the development server
+```bash
+npm start
+```
 
-## Educational Benefits
+#### Production Deployment
+1. Configure AWS CLI with appropriate credentials
 
-- Makes abstract physics concepts tangible and visual
-- Provides immediate feedback on student understanding
-- Encourages experimentation and discovery learning
-- Connects physical scenarios to mathematical representations
-- Builds intuition about how forces interact
+2. Deploy the infrastructure
+```bash
+./deploy.sh
+```
 
-## Classroom Integration
+### Quick Start
+1. Open the application in a web browser
+2. Select a force type from the control panel (gravity, normal force, friction, or applied force)
+3. Choose the appropriate angle for the selected force
+4. Complete the challenge by applying all required forces with correct angles
 
-### For Teachers:
-- Use as a demonstration tool during lectures
-- Assign as an interactive homework activity
-- Use for formative assessment of student understanding
-- Facilitate group discussions about force interactions
+### More Detailed Examples
+1. Basic Scenario - Box on Flat Surface:
+   - Add gravity (180°)
+   - Add normal force (90°)
+   - Verify forces balance in the free body diagram
 
-### For Students:
-- Practice creating free body diagrams at their own pace
-- Visualize abstract physics concepts
-- Test hypotheses about force interactions
-- Prepare for exams with interactive review
+2. Inclined Plane:
+   - Add gravity (180°)
+   - Add normal force perpendicular to the incline
+   - Add friction parallel to the incline
+   - Observe force components and their interactions
 
-## Technical Details
+### Troubleshooting
+1. Forces not appearing:
+   - Verify force selection in the control panel
+   - Check if angle is selected for the force
+   - Refresh the page if physics simulation stops responding
 
-- Built with HTML5, CSS3, and JavaScript
-- Uses Matter.js physics engine for accurate simulations
-- No external dependencies beyond Matter.js
-- Works on desktop and tablet devices
+2. Performance Issues:
+   - Clear browser cache
+   - Disable browser extensions
+   - Check for console errors (F12 Developer Tools)
 
-## Future Enhancements
+3. Deployment Issues:
+   - Verify AWS credentials are configured
+   - Check CloudFormation stack events for errors
+   - Ensure S3 bucket name matches domain name
+   - Verify ACM certificate is valid and in us-east-1 region
 
-- Additional levels with more complex scenarios
-- Force magnitude adjustment controls
-- Custom scenario builder
-- Multiplayer challenge mode
-- Integration with learning management systems
+## Data Flow
+The application follows a straightforward data flow for physics simulation and force visualization.
 
-## License
+```ascii
+[User Input] -> [Force Selection] -> [Angle Selection]
+      |               |                    |
+      v               v                    v
+[Game State] -> [Physics Engine] -> [Force Calculations]
+                      |                    |
+                      v                    v
+              [Visual Rendering] <- [FBD Generation]
+```
 
-This educational game is provided for free use in educational settings.
+Component interactions:
+1. User selects forces and angles through the control panel
+2. Game state updates with new force configurations
+3. Matter.js physics engine processes force interactions
+4. Force calculations determine object behavior
+5. Visual renderer updates the physics world display
+6. Free Body Diagram (FBD) updates to reflect current forces
+7. Force status panel validates force configurations
+8. Level completion check evaluates solution correctness
 
-## Contact
+## Infrastructure
 
-For questions, suggestions, or feedback, please contact [Your Contact Information].
+![Infrastructure diagram](./docs/infra.svg)
+AWS resources created by CloudFormation template:
 
----
+### S3
+- FrontendS3Bucket: Hosts static website content
+- BucketPolicy: Restricts access to CloudFront
 
-Developed for Hong Kong F.2 Physics Education
+### CloudFront
+- Distribution: Serves website content globally
+- Origin Access Control: Secures S3 bucket access
+- SSL/TLS: Uses ACM certificate for HTTPS
+- Custom domain: Configured with provided domain name
+
+### Security
+- Public access blocked on S3 bucket
+- HTTPS-only access via CloudFront
+- TLS 1.2 minimum protocol version
+- Origin Access Control for S3 protection
